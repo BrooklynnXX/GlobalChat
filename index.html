@@ -18,7 +18,7 @@
 </head>
 <body>
 
-  <img src="GNARCHAT_LOGO.png" id="logoTop" style="width:200px; height:120px;">
+  <img src="GNARCHAT_LOGO.png" id="logoTop" style="width:400px; height:240px;">
 
   <div id="authForms">
     <div id="signupDiv">
@@ -124,7 +124,15 @@
     // ===== Upload profile pic to Firebase Storage and return the download URL =====
     async function uploadProfilePic(file, uid) {
       const ref = storage.ref().child('profile_pics/' + uid);
-      await ref.put(file);
+
+      // Optional: add cache control metadata to speed up future loading
+      const metadata = {
+        cacheControl: 'public,max-age=31536000'
+      };
+
+      // You can add client-side image resizing here to speed up upload, but skipping for now
+
+      await ref.put(file, metadata);
       return await ref.getDownloadURL();
     }
 
@@ -339,6 +347,7 @@
 
       try {
         const url = await uploadProfilePic(file, currentUser.uid);
+        // Save the URL in database under user's profile
         await db.ref('users/' + currentUser.uid).update({ profilePic: url });
 
         statusDiv.textContent = 'Profile picture updated!';
