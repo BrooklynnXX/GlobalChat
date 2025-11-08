@@ -76,389 +76,391 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyCPjxmzcSVEtmELZtUqCq0tb6SGMe3JRkQ",
-      authDomain: "global-chat-bd90a.firebaseapp.com",
-      databaseURL: "https://global-chat-bd90a-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "global-chat-bd90a",
-      storageBucket: "global-chat-bd90a.appspot.com",
-      messagingSenderId: "1090315136333",
-      appId: "1:1090315136333:web:13bea5c3c97cd067b6db04",
-      measurementId: "G-NL8G2ETCCB"
-    };
+ <script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCPjxmzcSVEtmELZtUqCq0tb6SGMe3JRkQ",
+    authDomain: "global-chat-bd90a.firebaseapp.com",
+    databaseURL: "https://global-chat-bd90a-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "global-chat-bd90a",
+    storageBucket: "global-chat-bd90a.appspot.com",
+    messagingSenderId: "1090315136333",
+    appId: "1:1090315136333:web:13bea5c3c97cd067b6db04",
+    measurementId: "G-NL8G2ETCCB"
+  };
 
-    firebase.initializeApp(firebaseConfig);
+  firebase.initializeApp(firebaseConfig);
 
-    const auth = firebase.auth();
-    const db = firebase.database();
-    const storage = firebase.storage();
+  const auth = firebase.auth();
+  const db = firebase.database();
+  const storage = firebase.storage();
 
-    // UI elements
-    const signupEmail = document.getElementById('signupEmail');
-    const signupPassword = document.getElementById('signupPassword');
-    const signupPfp = document.getElementById('signupPfp');
-    const signupBtn = document.getElementById('signupBtn');
+  // UI elements
+  const signupDiv = document.getElementById('signupDiv');
+  const loginDiv = document.getElementById('loginDiv');
+  const signupEmail = document.getElementById('signupEmail');
+  const signupPassword = document.getElementById('signupPassword');
+  const signupPfp = document.getElementById('signupPfp');
+  const signupBtn = document.getElementById('signupBtn');
 
-    const loginEmail = document.getElementById('loginEmail');
-    const loginPassword = document.getElementById('loginPassword');
-    const loginBtn = document.getElementById('loginBtn');
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginBtn = document.getElementById('loginBtn');
 
-    const logoutBtn = document.getElementById('logoutBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
 
-    const pfpUploadDiv = document.getElementById('pfpUploadDiv');
-    const pfpFile = document.getElementById('pfpFile');
-    const uploadPfpBtn = document.getElementById('uploadPfpBtn');
+  const pfpUploadDiv = document.getElementById('pfpUploadDiv');
+  const pfpFile = document.getElementById('pfpFile');
+  const uploadPfpBtn = document.getElementById('uploadPfpBtn');
 
-    const displayNameUpdateDiv = document.getElementById('displayNameUpdateDiv');
-    const displayNameInput = document.getElementById('displayNameInput');
-    const updateDisplayNameBtn = document.getElementById('updateDisplayNameBtn');
+  const displayNameUpdateDiv = document.getElementById('displayNameUpdateDiv');
+  const displayNameInput = document.getElementById('displayNameInput');
+  const updateDisplayNameBtn = document.getElementById('updateDisplayNameBtn');
 
-    const statusDiv = document.getElementById('status');
-    const userListDiv = document.getElementById('userList');
-    const messagesDiv = document.getElementById('messages');
-    const messageInput = document.getElementById('message');
-    const sendBtn = document.getElementById('sendBtn');
-    const dmWithSpan = document.getElementById('dmWith');
+  const statusDiv = document.getElementById('status');
+  const userListDiv = document.getElementById('userList');
+  const messagesDiv = document.getElementById('messages');
+  const messageInput = document.getElementById('message');
+  const sendBtn = document.getElementById('sendBtn');
+  const dmWithSpan = document.getElementById('dmWith');
 
-    let currentUser = null;
-    let selectedDMUser = null; // null = global chat
-    const startTime = Date.now();
-    let messagesListener = null;
+  let currentUser = null;
+  let selectedDMUser = null; // null = global chat
+  const startTime = Date.now();
+  let messagesListener = null;
 
-    // Helper to clear auth inputs
-    function clearAuthInputs() {
-      signupEmail.value = '';
-      signupPassword.value = '';
-      signupPfp.value = '';
-      loginEmail.value = '';
-      loginPassword.value = '';
-    }
+  // Helper to clear auth inputs
+  function clearAuthInputs() {
+    signupEmail.value = '';
+    signupPassword.value = '';
+    signupPfp.value = '';
+    loginEmail.value = '';
+    loginPassword.value = '';
+  }
 
-    // Upload profile pic to Firebase Storage and return URL
-    async function uploadProfilePic(file, uid) {
-      const ref = storage.ref().child('profile_pics/' + uid);
-      const metadata = { cacheControl: 'public,max-age=31536000' };
-      await ref.put(file, metadata);
-      return await ref.getDownloadURL();
-    }
+  // Upload profile pic to Firebase Storage and return URL
+  async function uploadProfilePic(file, uid) {
+    const ref = storage.ref().child('profile_pics/' + uid);
+    const metadata = { cacheControl: 'public,max-age=31536000' };
+    await ref.put(file, metadata);
+    return await ref.getDownloadURL();
+  }
 
-    // ===== Auth State Changed Handler =====
-    auth.onAuthStateChanged(async user => {
-      currentUser = user;
+  // ===== Auth State Changed Handler =====
+  auth.onAuthStateChanged(async user => {
+    currentUser = user;
 
-      if (user) {
-        // Hide signup/login, show logout and chat UI
-        signupBtn.style.display = 'none';
-        loginBtn.style.display = 'none';
-        logoutBtn.style.display = 'inline-block';
-        messageInput.disabled = false;
-        sendBtn.disabled = false;
-        pfpUploadDiv.style.display = 'block';
-        displayNameUpdateDiv.style.display = 'none'; // will show if no displayName
+    if (user) {
+      // Hide entire signup and login forms, show logout and chat UI
+      signupDiv.style.display = 'none';
+      loginDiv.style.display = 'none';
+      logoutBtn.style.display = 'inline-block';
+      messageInput.disabled = false;
+      sendBtn.disabled = false;
+      pfpUploadDiv.style.display = 'block';
+      displayNameUpdateDiv.style.display = 'none'; // will show if no displayName
 
-        statusDiv.textContent = 'Checking user info...';
+      statusDiv.textContent = 'Checking user info...';
 
-        // Check if user has displayName in DB
-        const userSnapshot = await db.ref('users/' + user.uid).get();
-        const userInfo = userSnapshot.val();
+      // Check if user has displayName in DB
+      const userSnapshot = await db.ref('users/' + user.uid).get();
+      const userInfo = userSnapshot.val();
 
-        if (!userInfo || !userInfo.displayName) {
-          // Ask user for display name (block until they enter it)
-          let displayName = null;
-          while (!displayName) {
-            displayName = prompt('Welcome! Please enter your display name:').trim();
-            if (!displayName) alert('Display name cannot be empty!');
-          }
-          // Save displayName and email, and profilePic (if any)
-          const profilePicUrl = userInfo?.profilePic || null;
-          await db.ref('users/' + user.uid).set({
-            email: user.email,
-            displayName: displayName,
-            profilePic: profilePicUrl
-          });
-          statusDiv.textContent = 'Welcome, ' + displayName + '!';
-          displayNameUpdateDiv.style.display = 'block'; // show update UI now
-          displayNameInput.value = displayName;
-        } else {
-          statusDiv.textContent = 'Logged in as: ' + userInfo.displayName;
-          displayNameUpdateDiv.style.display = 'block';
-          displayNameInput.value = userInfo.displayName;
-        }
-
-        registerUserPresence(user.uid);
-        attachMessagesListener();
-
-      } else {
-        statusDiv.textContent = 'Not logged in.';
-        signupBtn.style.display = 'inline-block';
-        loginBtn.style.display = 'inline-block';
-        logoutBtn.style.display = 'none';
-        messageInput.disabled = true;
-        sendBtn.disabled = true;
-        pfpUploadDiv.style.display = 'none';
-        displayNameUpdateDiv.style.display = 'none';
-        clearMessages();
-      }
-    });
-
-    // ===== Signup =====
-    signupBtn.onclick = async () => {
-      const email = signupEmail.value.trim();
-      const pass = signupPassword.value.trim();
-      const file = signupPfp.files[0];
-
-      if (!email || !pass) {
-        alert('Enter email and password to sign up');
-        return;
-      }
-
-      statusDiv.textContent = 'Signing up...';
-
-      try {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
-        currentUser = userCredential.user;
-
-        let profilePicUrl = null;
-        if (file) {
-          profilePicUrl = await uploadProfilePic(file, currentUser.uid);
-        }
-
-        // Display name prompt after signup
+      if (!userInfo || !userInfo.displayName) {
+        // Ask user for display name (block until they enter it)
         let displayName = null;
         while (!displayName) {
-          displayName = prompt('Welcome! Please enter your display name:');
-          if (displayName) displayName = displayName.trim();
+          displayName = prompt('Welcome! Please enter your display name:').trim();
           if (!displayName) alert('Display name cannot be empty!');
         }
-
-        await db.ref('users/' + currentUser.uid).set({
-          email: currentUser.email,
+        // Save displayName and email, and profilePic (if any)
+        const profilePicUrl = userInfo?.profilePic || null;
+        await db.ref('users/' + user.uid).set({
+          email: user.email,
           displayName: displayName,
-          profilePic: profilePicUrl || null
+          profilePic: profilePicUrl
         });
-
-        statusDiv.textContent = 'Sign up successful! You are logged in as ' + displayName + '.';
-        clearAuthInputs();
-
-      } catch (e) {
-        statusDiv.textContent = 'Error signing up: ' + e.message;
-      }
-    };
-
-    // ===== Login =====
-    loginBtn.onclick = async () => {
-      const email = loginEmail.value.trim();
-      const pass = loginPassword.value.trim();
-
-      if (!email || !pass) {
-        alert('Enter email and password to log in');
-        return;
+        statusDiv.textContent = 'Welcome, ' + displayName + '!';
+        displayNameUpdateDiv.style.display = 'block'; // show update UI now
+        displayNameInput.value = displayName;
+      } else {
+        statusDiv.textContent = 'Logged in as: ' + userInfo.displayName;
+        displayNameUpdateDiv.style.display = 'block';
+        displayNameInput.value = userInfo.displayName;
       }
 
-      statusDiv.textContent = 'Logging in...';
+      registerUserPresence(user.uid);
+      attachMessagesListener();
 
-      try {
-        await auth.signInWithEmailAndPassword(email, pass);
-        clearAuthInputs();
-        // displayName prompt handled in auth state change
-      } catch (e) {
-        statusDiv.textContent = 'Login error: ' + e.message;
-      }
-    };
+    } else {
+      statusDiv.textContent = 'Not logged in.';
+      signupDiv.style.display = 'block';
+      loginDiv.style.display = 'block';
+      logoutBtn.style.display = 'none';
+      messageInput.disabled = true;
+      sendBtn.disabled = true;
+      pfpUploadDiv.style.display = 'none';
+      displayNameUpdateDiv.style.display = 'none';
+      clearMessages();
+    }
+  });
 
-    // ===== Logout =====
-    logoutBtn.onclick = () => {
-      auth.signOut();
-    };
+  // ===== Signup =====
+  signupBtn.onclick = async () => {
+    const email = signupEmail.value.trim();
+    const pass = signupPassword.value.trim();
+    const file = signupPfp.files[0];
 
-    // ===== User presence system =====
-    function registerUserPresence(uid) {
-      const userRef = db.ref('activeUsers/' + uid);
-      userRef.set(true);
-      userRef.onDisconnect().remove();
+    if (!email || !pass) {
+      alert('Enter email and password to sign up');
+      return;
     }
 
-    db.ref('activeUsers').on('value', snapshot => {
-      updateUserList(snapshot.val());
-    });
+    statusDiv.textContent = 'Signing up...';
 
-    // ===== Update user list with display names =====
-    async function updateUserList(users) {
-      userListDiv.innerHTML = '';
-      if (!currentUser) {
-        userListDiv.textContent = 'Please log in to see online users.';
-        return;
-      }
-      const otherUsers = Object.keys(users || {}).filter(u => u !== currentUser.uid);
-      if (otherUsers.length === 0) {
-        userListDiv.textContent = 'No other users online.';
-        return;
-      }
-      for (const uid of otherUsers) {
-        const snapshot = await db.ref('users/' + uid).get();
-        const userInfo = snapshot.val();
-        const name = userInfo?.displayName || userInfo?.email || uid;
-        const profilePic = userInfo?.profilePic || 'https://via.placeholder.com/30?text=?';
+    try {
+      const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
+      currentUser = userCredential.user;
 
-        const div = document.createElement('div');
-        div.innerHTML = `<img src="${profilePic}" alt="pfp"/>` + name;
-        if (uid === selectedDMUser) div.classList.add('selected');
-        div.onclick = () => {
-          if (selectedDMUser === uid) {
-            selectedDMUser = null;
-            dmWithSpan.textContent = 'Global Chat';
-          } else {
-            selectedDMUser = uid;
-            dmWithSpan.textContent = 'DM with ' + name;
-          }
-          clearMessages();
-          attachMessagesListener();
-          updateUserList(users);
-        };
-        userListDiv.appendChild(div);
+      let profilePicUrl = null;
+      if (file) {
+        profilePicUrl = await uploadProfilePic(file, currentUser.uid);
       }
+
+      // Display name prompt after signup
+      let displayName = null;
+      while (!displayName) {
+        displayName = prompt('Welcome! Please enter your display name:');
+        if (displayName) displayName = displayName.trim();
+        if (!displayName) alert('Display name cannot be empty!');
+      }
+
+      await db.ref('users/' + currentUser.uid).set({
+        email: currentUser.email,
+        displayName: displayName,
+        profilePic: profilePicUrl || null
+      });
+
+      statusDiv.textContent = 'Sign up successful! You are logged in as ' + displayName + '.';
+      clearAuthInputs();
+
+    } catch (e) {
+      statusDiv.textContent = 'Error signing up: ' + e.message;
+    }
+  };
+
+  // ===== Login =====
+  loginBtn.onclick = async () => {
+    const email = loginEmail.value.trim();
+    const pass = loginPassword.value.trim();
+
+    if (!email || !pass) {
+      alert('Enter email and password to log in');
+      return;
     }
 
-    // ===== Clear messages =====
-    function clearMessages() {
-      messagesDiv.innerHTML = '';
-    }
+    statusDiv.textContent = 'Logging in...';
 
-    // ===== Attach messages listener =====
-    function attachMessagesListener() {
-      if (messagesListener) {
-        if (selectedDMUser === null) {
-          db.ref('messages').off('child_added', messagesListener);
+    try {
+      await auth.signInWithEmailAndPassword(email, pass);
+      clearAuthInputs();
+      // displayName prompt handled in auth state change
+    } catch (e) {
+      statusDiv.textContent = 'Login error: ' + e.message;
+    }
+  };
+
+  // ===== Logout =====
+  logoutBtn.onclick = () => {
+    auth.signOut();
+  };
+
+  // ===== User presence system =====
+  function registerUserPresence(uid) {
+    const userRef = db.ref('activeUsers/' + uid);
+    userRef.set(true);
+    userRef.onDisconnect().remove();
+  }
+
+  db.ref('activeUsers').on('value', snapshot => {
+    updateUserList(snapshot.val());
+  });
+
+  // ===== Update user list with display names =====
+  async function updateUserList(users) {
+    userListDiv.innerHTML = '';
+    if (!currentUser) {
+      userListDiv.textContent = 'Please log in to see online users.';
+      return;
+    }
+    const otherUsers = Object.keys(users || {}).filter(u => u !== currentUser.uid);
+    if (otherUsers.length === 0) {
+      userListDiv.textContent = 'No other users online.';
+      return;
+    }
+    for (const uid of otherUsers) {
+      const snapshot = await db.ref('users/' + uid).get();
+      const userInfo = snapshot.val();
+      const name = userInfo?.displayName || userInfo?.email || uid;
+      const profilePic = userInfo?.profilePic || 'https://via.placeholder.com/30?text=?';
+
+      const div = document.createElement('div');
+      div.innerHTML = `<img src="${profilePic}" alt="pfp"/>` + name;
+      if (uid === selectedDMUser) div.classList.add('selected');
+      div.onclick = () => {
+        if (selectedDMUser === uid) {
+          selectedDMUser = null;
+          dmWithSpan.textContent = 'Global Chat';
         } else {
-          db.ref('privateMessages').off('child_added', messagesListener);
+          selectedDMUser = uid;
+          dmWithSpan.textContent = 'DM with ' + name;
         }
-        messagesListener = null;
-      }
-
-      if (selectedDMUser === null) {
-        messagesListener = async snapshot => {
-          const msg = snapshot.val();
-          if (msg.timestamp > startTime && (!msg.to)) {
-            const userSnapshot = await db.ref('users/' + msg.uid).get();
-            const userInfo = userSnapshot.val();
-            const profilePic = userInfo?.profilePic || 'https://via.placeholder.com/30?text=?';
-            const name = userInfo?.displayName || userInfo?.email || 'Unknown';
-
-            const div = document.createElement('div');
-            div.innerHTML = `<img src="${profilePic}" alt="pfp" />` + name + ': ' + msg.text;
-            messagesDiv.appendChild(div);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-          }
-        };
-        db.ref('messages').on('child_added', messagesListener);
-      } else {
-        messagesListener = async snapshot => {
-          const msg = snapshot.val();
-          if (msg.timestamp > startTime &&
-              ((msg.from === currentUser.uid && msg.to === selectedDMUser) ||
-               (msg.from === selectedDMUser && msg.to === currentUser.uid))) {
-
-            const userIdForPic = msg.from === currentUser.uid ? currentUser.uid : selectedDMUser;
-            const userSnapshot = await db.ref('users/' + userIdForPic).get();
-            const userInfo = userSnapshot.val();
-            const profilePic = userInfo?.profilePic || 'https://via.placeholder.com/30?text=?';
-            const name = msg.from === currentUser.uid ? 'You' : (userInfo?.displayName || userInfo?.email || msg.from);
-
-            const div = document.createElement('div');
-            div.innerHTML = `<img src="${profilePic}" alt="pfp" />` + name + ': ' + msg.text;
-            messagesDiv.appendChild(div);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-          }
-        };
-        db.ref('privateMessages').on('child_added', messagesListener);
-      }
-    }
-
-    // ===== Send message =====
-    sendBtn.onclick = () => {
-      if (!currentUser) {
-        alert('Please log in first!');
-        return;
-      }
-      const text = messageInput.value.trim();
-      if (!text) return;
-
-      if (selectedDMUser === null) {
-        db.ref('messages').push({
-          username: currentUser.email,
-          uid: currentUser.uid,
-          text,
-          timestamp: Date.now()
-        });
-      } else {
-        db.ref('privateMessages').push({
-          from: currentUser.uid,
-          to: selectedDMUser,
-          text,
-          timestamp: Date.now()
-        });
-      }
-      messageInput.value = '';
-    };
-
-    // Send on enter
-    messageInput.addEventListener('keyup', e => {
-      if (e.key === 'Enter') sendBtn.click();
-    });
-
-    // ===== Profile pic upload for existing users =====
-    uploadPfpBtn.onclick = async () => {
-      if (!currentUser) {
-        alert('Please log in first!');
-        return;
-      }
-      const file = pfpFile.files[0];
-      if (!file) {
-        alert('Please select an image file!');
-        return;
-      }
-
-      statusDiv.textContent = 'Uploading profile picture...';
-
-      try {
-        const url = await uploadProfilePic(file, currentUser.uid);
-        await db.ref('users/' + currentUser.uid).update({ profilePic: url });
-
-        statusDiv.textContent = 'Profile picture updated!';
-
-        // Refresh user list and messages
-        db.ref('activeUsers').once('value').then(snapshot => {
-          updateUserList(snapshot.val());
-        });
         clearMessages();
         attachMessagesListener();
+        updateUserList(users);
+      };
+      userListDiv.appendChild(div);
+    }
+  }
 
-      } catch (e) {
-        statusDiv.textContent = 'Upload failed: ' + e.message;
-      }
-    };
+  // ===== Clear messages =====
+  function clearMessages() {
+    messagesDiv.innerHTML = '';
+  }
 
-    // ===== Display Name update button =====
-    updateDisplayNameBtn.onclick = async () => {
-      if (!currentUser) {
-        alert('Please log in first!');
-        return;
+  // ===== Attach messages listener =====
+  function attachMessagesListener() {
+    if (messagesListener) {
+      if (selectedDMUser === null) {
+        db.ref('messages').off('child_added', messagesListener);
+      } else {
+        db.ref('privateMessages').off('child_added', messagesListener);
       }
-      const newName = displayNameInput.value.trim();
-      if (!newName) {
-        alert('Display name cannot be empty!');
-        return;
-      }
+      messagesListener = null;
+    }
 
-      try {
-        await db.ref('users/' + currentUser.uid).update({ displayName: newName });
-        statusDiv.textContent = 'Display name updated to ' + newName + '!';
-        updateUserList(await db.ref('activeUsers').once('value').then(snap => snap.val()));
-      } catch (e) {
-        statusDiv.textContent = 'Failed to update display name: ' + e.message;
-      }
-    };
-  </script>
+    if (selectedDMUser === null) {
+      messagesListener = async snapshot => {
+        const msg = snapshot.val();
+        if (msg.timestamp > startTime && (!msg.to)) {
+          const userSnapshot = await db.ref('users/' + msg.uid).get();
+          const userInfo = userSnapshot.val();
+          const profilePic = userInfo?.profilePic || 'https://via.placeholder.com/30?text=?';
+          const name = userInfo?.displayName || userInfo?.email || 'Unknown';
+
+          const div = document.createElement('div');
+          div.innerHTML = `<img src="${profilePic}" alt="pfp" />` + name + ': ' + msg.text;
+          messagesDiv.appendChild(div);
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+      };
+      db.ref('messages').on('child_added', messagesListener);
+    } else {
+      messagesListener = async snapshot => {
+        const msg = snapshot.val();
+        if (msg.timestamp > startTime &&
+            ((msg.from === currentUser.uid && msg.to === selectedDMUser) ||
+             (msg.from === selectedDMUser && msg.to === currentUser.uid))) {
+
+          const userIdForPic = msg.from === currentUser.uid ? currentUser.uid : selectedDMUser;
+          const userSnapshot = await db.ref('users/' + userIdForPic).get();
+          const userInfo = userSnapshot.val();
+          const profilePic = userInfo?.profilePic || 'https://via.placeholder.com/30?text=?';
+          const name = msg.from === currentUser.uid ? 'You' : (userInfo?.displayName || userInfo?.email || msg.from);
+
+          const div = document.createElement('div');
+          div.innerHTML = `<img src="${profilePic}" alt="pfp" />` + name + ': ' + msg.text;
+          messagesDiv.appendChild(div);
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+      };
+      db.ref('privateMessages').on('child_added', messagesListener);
+    }
+  }
+
+  // ===== Send message =====
+  sendBtn.onclick = () => {
+    if (!currentUser) {
+      alert('Please log in first!');
+      return;
+    }
+    const text = messageInput.value.trim();
+    if (!text) return;
+
+    if (selectedDMUser === null) {
+      db.ref('messages').push({
+        username: currentUser.email,
+        uid: currentUser.uid,
+        text,
+        timestamp: Date.now()
+      });
+    } else {
+      db.ref('privateMessages').push({
+        from: currentUser.uid,
+        to: selectedDMUser,
+        text,
+        timestamp: Date.now()
+      });
+    }
+    messageInput.value = '';
+  };
+
+  // Send on enter
+  messageInput.addEventListener('keyup', e => {
+    if (e.key === 'Enter') sendBtn.click();
+  });
+
+  // ===== Profile pic upload for existing users =====
+  uploadPfpBtn.onclick = async () => {
+    if (!currentUser) {
+      alert('Please log in first!');
+      return;
+    }
+    const file = pfpFile.files[0];
+    if (!file) {
+      alert('Please select an image file!');
+      return;
+    }
+
+    statusDiv.textContent = 'Uploading profile picture...';
+
+    try {
+      const url = await uploadProfilePic(file, currentUser.uid);
+      await db.ref('users/' + currentUser.uid).update({ profilePic: url });
+
+      statusDiv.textContent = 'Profile picture updated!';
+
+      // Refresh user list and messages
+      db.ref('activeUsers').once('value').then(snapshot => {
+        updateUserList(snapshot.val());
+      });
+      clearMessages();
+      attachMessagesListener();
+
+    } catch (e) {
+      statusDiv.textContent = 'Upload failed: ' + e.message;
+    }
+  };
+
+  // ===== Display Name update button =====
+  updateDisplayNameBtn.onclick = async () => {
+    if (!currentUser) {
+      alert('Please log in first!');
+      return;
+    }
+    const newName = displayNameInput.value.trim();
+    if (!newName) {
+      alert('Display name cannot be empty!');
+      return;
+    }
+
+    try {
+      await db.ref('users/' + currentUser.uid).update({ displayName: newName });
+      statusDiv.textContent = 'Display name updated to ' + newName + '!';
+      updateUserList(await db.ref('activeUsers').once('value').then(snap => snap.val()));
+    } catch (e) {
+      statusDiv.textContent = 'Failed to update display name: ' + e.message;
+    }
+  };
+</script>
 </body>
 </html>
