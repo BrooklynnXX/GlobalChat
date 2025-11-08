@@ -1,31 +1,44 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Glob and Priv Chat</title>
+  <title>Gnarchat</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; }
     #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; margin-bottom: 10px; }
     #messages div { margin-bottom: 8px; }
-    #username, #message, #dmUserSelect { padding: 8px; width: 70%; }
-    #sendBtn, #setUsernameBtn { padding: 8px; margin-left: 5px; }
-    #status { margin-top: 10px; color: red; font-weight: bold; }
-    #userList { border: 1px solid #ccc; padding: 10px; max-height: 150px; overflow-y: scroll; margin-bottom: 10px; }
+    input, button { padding: 8px; margin: 5px 0; width: 100%; max-width: 400px; }
     #userList div { cursor: pointer; padding: 4px; border-bottom: 1px solid #eee; }
     #userList div.selected { background-color: #d0d0ff; }
+    #status { margin: 10px 0; font-weight: bold; }
+    #authForms > div { margin-bottom: 20px; }
   </style>
 </head>
 <body>
 
-  <h2>Glob and Priv Chat</h2>
+  <h2>Gnarchat</h2>
 
-  <label>Username: <input type="text" id="username" placeholder="Enter your name" />
-    <button id="setUsernameBtn">Set Username</button>
-  </label>
+  <div id="authForms">
+    <div id="signupDiv">
+      <h3>Sign Up</h3>
+      <input type="email" id="signupEmail" placeholder="Email" />
+      <input type="password" id="signupPassword" placeholder="Password" />
+      <button id="signupBtn">Sign Up</button>
+    </div>
+
+    <div id="loginDiv">
+      <h3>Log In</h3>
+      <input type="email" id="loginEmail" placeholder="Email" />
+      <input type="password" id="loginPassword" placeholder="Password" />
+      <button id="loginBtn">Log In</button>
+    </div>
+
+    <button id="logoutBtn" style="display:none;">Log Out</button>
+  </div>
+
   <div id="status"></div>
-  <br/>
 
   <div><strong>Online Users:</strong></div>
-  <div id="userList">Loading...</div>
+  <div id="userList">Please log in to see online users.</div>
 
   <div>
     <label>Chatting with: <span id="dmWith">Global Chat</span></label>
@@ -38,6 +51,7 @@
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
   <script>
@@ -53,53 +67,92 @@
     };
 
     firebase.initializeApp(firebaseConfig);
+
+    const auth = firebase.auth();
     const db = firebase.database();
 
-    const messagesDiv = document.getElementById('messages');
-    const usernameInput = document.getElementById('username');
-    const messageInput = document.getElementById('message');
-    const sendBtn = document.getElementById('sendBtn');
-    const setUsernameBtn = document.getElementById('setUsernameBtn');
+    // UI elements
+    const signupEmail = document.getElementById('signupEmail');
+    const signupPassword = document.getElementById('signupPassword');
+    const signupBtn = document.getElementById('signupBtn');
+
+    const loginEmail = document.getElementById('loginEmail');
+    const loginPassword = document.getElementById('loginPassword');
+    const loginBtn = document.getElementById('loginBtn');
+
+    const logoutBtn = document.getElementById('logoutBtn');
+
     const statusDiv = document.getElementById('status');
     const userListDiv = document.getElementById('userList');
+    const messagesDiv = document.getElementById('messages');
+    const messageInput = document.getElementById('message');
+    const sendBtn = document.getElementById('sendBtn');
     const dmWithSpan = document.getElementById('dmWith');
 
-    let currentUsername = null;
-    let selectedDMUser = null;  // null means global chat
+    let currentUser = null;
+    let selectedDMUser = null; // null = global chat
     const startTime = Date.now();
 
-    // Load saved username from localStorage
-    const savedUsername = localStorage.getItem('chat_username');
-    if(savedUsername) {
-      usernameInput.value = savedUsername;
-    }
+    // Track message listener so we can detach it
+    let messagesListener = null;
 
-    function checkUsernameAvailable(name) {
-      return db.ref('activeUsers/' + name).get().then(snapshot => {
-        return !snapshot.exists();
-      });
-    }
+    // ===== Authentication =====
 
-    // Return a promise to wait for registration completion
-    function registerUsername(name) {
-      const userRef = db.ref('activeUsers/' + name);
-      return userRef.set(true).then(() => {
-        userRef.onDisconnect().remove();
-      });
-    }
-
-    function clearMessages() {
-      messagesDiv.innerHTML = '';
-    }
-
-    // Update online users list, excluding yourself
-    function updateUserList(users) {
-      userListDiv.innerHTML = '';
-      if (!currentUsername) {
-        userListDiv.textContent = 'Set username to see online users.';
+    signupBtn.onclick = () => {
+      const email = signupEmail.value.trim();
+      const pass = signupPassword.value.trim();
+      if (!email || !pass) {
+        alert('Enter email and password to sign up');
         return;
       }
-      const otherUsers = Object.keys(users || {}).filter(u => u !== currentUsername);
+      auth.createUserWithEmailAndPassword(email, pass)
+        .then(() => {
+          statusDiv.textContent = 'Sign up successful! You are logged in.';
+          clearAuthInputs();
+        })
+        .catch(e => {
+          statusDiv.textContent = 'Error signing up: ' + e.message;
+        });
+    };
+
+    loginBtn.onclick = () => {
+      const email = loginEmail.value.trim();
+      const pass = loginPassword.value.trim();
+      if (!email || !pass) {
+        alert('Enter email and password to log in');
+        return;
+      }
+      auth.signInWithEmailAndPassword(email, pass)
+        .then(() => {
+          statusDiv.textContent = 'Logged in successfully!';
+          clearAuthInputs();
+        })
+        .catch(e => {
+          statusDiv.textContent = 'Login error: ' + e.message;
+        });
+    };
+
+    logoutBtn.onclick = () => {
+      auth.signOut();
+    };
+
+    function clearAuthInputs() {
+      signupEmail.value = '';
+      signupPassword.value = '';
+      loginEmail.value = '';
+      loginPassword.value = '';
+    }
+
+    // ===== User presence and chat =====
+
+    // Update online users list excluding self
+    function updateUserList(users) {
+      userListDiv.innerHTML = '';
+      if (!currentUser) {
+        userListDiv.textContent = 'Please log in to see online users.';
+        return;
+      }
+      const otherUsers = Object.keys(users || {}).filter(u => u !== currentUser.uid);
       if (otherUsers.length === 0) {
         userListDiv.textContent = 'No other users online.';
         return;
@@ -110,7 +163,7 @@
         if (user === selectedDMUser) div.classList.add('selected');
         div.onclick = () => {
           if (selectedDMUser === user) {
-            selectedDMUser = null; // deselect DM user → global chat
+            selectedDMUser = null;
             dmWithSpan.textContent = 'Global Chat';
           } else {
             selectedDMUser = user;
@@ -124,17 +177,13 @@
       });
     }
 
-    // Listen to active users and update UI
-    db.ref('activeUsers').on('value', snapshot => {
-      updateUserList(snapshot.val());
-    });
+    // Clear chat messages
+    function clearMessages() {
+      messagesDiv.innerHTML = '';
+    }
 
-    // Keep track of the message listener unsubscribe function
-    let messagesListener = null;
-
-    // Attach message listener according to selectedDMUser (global or DM)
+    // Attach listener to messages based on DM or global chat
     function attachMessagesListener() {
-      // Remove previous listener if exists
       if (messagesListener) {
         if (selectedDMUser === null) {
           db.ref('messages').off('child_added', messagesListener);
@@ -144,11 +193,7 @@
         messagesListener = null;
       }
 
-      // Don't clear messages here anymore
-      // clearMessages();
-
       if (selectedDMUser === null) {
-        // Global chat messages where to === null
         messagesListener = snapshot => {
           const msg = snapshot.val();
           if (msg.timestamp > startTime && (!msg.to)) {
@@ -160,14 +205,13 @@
         };
         db.ref('messages').on('child_added', messagesListener);
       } else {
-        // DM messages between currentUsername and selectedDMUser
         messagesListener = snapshot => {
           const msg = snapshot.val();
           if (msg.timestamp > startTime &&
-              ((msg.from === currentUsername && msg.to === selectedDMUser) ||
-               (msg.from === selectedDMUser && msg.to === currentUsername))) {
+              ((msg.from === currentUser.uid && msg.to === selectedDMUser) ||
+               (msg.from === selectedDMUser && msg.to === currentUser.uid))) {
             const div = document.createElement('div');
-            div.textContent = (msg.from === currentUsername ? 'You' : msg.from) + ': ' + msg.text;
+            div.textContent = (msg.from === currentUser.uid ? 'You' : msg.from) + ': ' + msg.text;
             messagesDiv.appendChild(div);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
           }
@@ -176,88 +220,76 @@
       }
     }
 
-    // Save username input changes to localStorage
-    usernameInput.addEventListener('input', () => {
-      localStorage.setItem('chat_username', usernameInput.value);
+    // ===== User presence system =====
+    // Store online users with UID as key
+    function registerUserPresence(uid) {
+      const userRef = db.ref('activeUsers/' + uid);
+      userRef.set(true);
+      userRef.onDisconnect().remove();
+    }
+
+    // Listen to online users changes
+    db.ref('activeUsers').on('value', snapshot => {
+      updateUserList(snapshot.val());
     });
 
-    // Set username button
-    setUsernameBtn.addEventListener('click', async () => {
-      const name = usernameInput.value.trim();
-      statusDiv.textContent = '';
-      if (!name) {
-        alert('Please enter a username');
-        return;
-      }
-      if (currentUsername) {
-        alert('Username already set for this session. Refresh page to change.');
-        return;
-      }
-      try {
-        const available = await checkUsernameAvailable(name);
-        if (!available) {
-          statusDiv.style.color = 'red';
-          statusDiv.textContent = 'Username "' + name + '" is already taken. Please choose another.';
-          return;
-        }
-        // Wait for registration to complete before continuing
-        await registerUsername(name);
+    // ===== Send message =====
 
-        currentUsername = name;
-        statusDiv.style.color = 'green';
-        statusDiv.textContent = 'Username "' + name + '" registered! You can now chat.';
-        usernameInput.disabled = true;
-        setUsernameBtn.disabled = true;
-        messageInput.disabled = false;
-        sendBtn.disabled = false;
-        messageInput.focus();
-
-        // Immediately re-fetch activeUsers to update the list now
-        db.ref('activeUsers').once('value').then(snapshot => {
-          updateUserList(snapshot.val());
-        });
-
-        attachMessagesListener(); // start listening to messages
-      } catch (err) {
-        console.error('Error checking username:', err);
-        statusDiv.textContent = 'Error checking username availability. Try again.';
-      }
-    });
-
-    // Send message button
-    sendBtn.addEventListener('click', () => {
-      if (!currentUsername) {
-        alert('Please set a username first!');
+    sendBtn.onclick = () => {
+      if (!currentUser) {
+        alert('Please log in first!');
         return;
       }
       const text = messageInput.value.trim();
       if (!text) return;
 
       if (selectedDMUser === null) {
-        // Global chat: store in /messages with no 'to'
         db.ref('messages').push({
-          username: currentUsername,
+          username: currentUser.email,
+          uid: currentUser.uid,
           text,
           timestamp: Date.now()
         });
       } else {
-        // DM chat: store in /privateMessages with from/to
         db.ref('privateMessages').push({
-          from: currentUsername,
+          from: currentUser.uid,
           to: selectedDMUser,
           text,
           timestamp: Date.now()
         });
       }
-
       messageInput.value = '';
-    });
+    };
 
-    // Send message on Enter key
+    // Send on enter
     messageInput.addEventListener('keyup', e => {
       if (e.key === 'Enter') sendBtn.click();
     });
 
+    // ===== Auth state listener =====
+    auth.onAuthStateChanged(user => {
+      currentUser = user;
+      if (user) {
+        statusDiv.textContent = 'Logged in as: ' + user.email;
+        signupBtn.style.display = 'none';
+        loginBtn.style.display = 'none';
+        logoutBtn.style.display = 'inline-block';
+        messageInput.disabled = false;
+        sendBtn.disabled = false;
+        // Register presence
+        registerUserPresence(user.uid);
+        // Attach messages listener
+        attachMessagesListener();
+      } else {
+        statusDiv.textContent = 'Not logged in.';
+        signupBtn.style.display = 'inline-block';
+        loginBtn.style.display = 'inline-block';
+        logoutBtn.style.display = 'none';
+        messageInput.disabled = true;
+        sendBtn.disabled = true;
+        clearMessages();
+      }
+    });
   </script>
 </body>
 </html>
