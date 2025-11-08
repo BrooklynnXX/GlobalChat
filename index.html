@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple Firebase Chat</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; }
+    #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
+    #messages div { margin-bottom: 8px; }
+    #username, #message { padding: 8px; width: 80%; }
+    #sendBtn { padding: 8px; }
+  </style>
+</head>
+<body>
+
+  <h2>Simple Firebase Chat</h2>
+
+  <label>Username: <input type="text" id="username" placeholder="Enter your name" /></label><br/><br/>
+  
+  <div id="messages"></div>
+  
+  <input type="text" id="message" placeholder="Type your message" />
+  <button id="sendBtn">Send</button>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+  <script>
+    // Paste your Firebase config here from Step 2
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const messagesDiv = document.getElementById('messages');
+    const usernameInput = document.getElementById('username');
+    const messageInput = document.getElementById('message');
+    const sendBtn = document.getElementById('sendBtn');
+
+    // Listen for new messages
+    db.ref('messages').limitToLast(50).on('child_added', snapshot => {
+      const msg = snapshot.val();
+      const div = document.createElement('div');
+      div.textContent = msg.username + ': ' + msg.text;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+
+    // Send message on button click
+    sendBtn.addEventListener('click', () => {
+      const username = usernameInput.value.trim();
+      const text = messageInput.value.trim();
+      if (!username) {
+        alert('Please enter a username');
+        return;
+      }
+      if (!text) return;
+
+      // Push message to Firebase
+      db.ref('messages').push({
+        username,
+        text,
+        timestamp: Date.now()
+      });
+
+      messageInput.value = '';
+    });
+
+    // Optional: send message on Enter key press
+    messageInput.addEventListener('keyup', e => {
+      if (e.key === 'Enter') sendBtn.click();
+    });
+  </script>
+</body>
+</html>
