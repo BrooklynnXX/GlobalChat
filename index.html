@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Simple Firebase Chat</title>
+  <title>Simple Firebase Chat (Show New Messages Only)</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; }
     #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
@@ -26,9 +26,8 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
   <script>
-    // Paste your Firebase config here from Step 2
     const firebaseConfig = {
-       apiKey: "AIzaSyCPjxmzcSVEtmELZtUqCq0tb6SGMe3JRkQ",
+      apiKey: "AIzaSyCPjxmzcSVEtmELZtUqCq0tb6SGMe3JRkQ",
       authDomain: "global-chat-bd90a.firebaseapp.com",
       databaseURL: "https://global-chat-bd90a-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "global-chat-bd90a",
@@ -47,16 +46,20 @@
     const messageInput = document.getElementById('message');
     const sendBtn = document.getElementById('sendBtn');
 
-    // Listen for new messages
-    db.ref('messages').limitToLast(50).on('child_added', snapshot => {
+    // Get timestamp when page loads
+    const startTime = Date.now();
+
+    // Listen for new messages sent after page load
+    db.ref('messages').on('child_added', snapshot => {
       const msg = snapshot.val();
-      const div = document.createElement('div');
-      div.textContent = msg.username + ': ' + msg.text;
-      messagesDiv.appendChild(div);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      if (msg.timestamp > startTime) {
+        const div = document.createElement('div');
+        div.textContent = msg.username + ': ' + msg.text;
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
     });
 
-    // Send message on button click
     sendBtn.addEventListener('click', () => {
       const username = usernameInput.value.trim();
       const text = messageInput.value.trim();
@@ -66,7 +69,6 @@
       }
       if (!text) return;
 
-      // Push message to Firebase
       db.ref('messages').push({
         username,
         text,
@@ -76,7 +78,6 @@
       messageInput.value = '';
     });
 
-    // Optional: send message on Enter key press
     messageInput.addEventListener('keyup', e => {
       if (e.key === 'Enter') sendBtn.click();
     });
