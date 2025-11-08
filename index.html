@@ -1,31 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Simple Firebase Chat (Show New Messages Only)</title>
+  <title>Firebase Chat with Username Check</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; }
     #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
     #messages div { margin-bottom: 8px; }
     #username, #message { padding: 8px; width: 80%; }
-    #sendBtn { padding: 8px; }
+    #sendBtn, #setUsernameBtn { padding: 8px; margin-left: 5px; }
+    #status { margin-top: 10px; color: red; font-weight: bold; }
   </style>
 </head>
 <body>
 
-  <h2>Simple Firebase Chat</h2>
+  <h2>Firebase Chat with Username Check</h2>
 
-  <label>Username: <input type="text" id="username" placeholder="Enter your name" /></label><br/><br/>
-  
+  <label>Username: <input type="text" id="username" placeholder="Enter your name" />
+    <button id="setUsernameBtn">Set Username</button>
+  </label>
+  <div id="status"></div>
+  <br/>
+
   <div id="messages"></div>
-  
-  <input type="text" id="message" placeholder="Type your message" />
-  <button id="sendBtn">Send</button>
+
+  <input type="text" id="message" placeholder="Type your message" disabled />
+  <button id="sendBtn" disabled>Send</button>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
   <script>
+    // Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCPjxmzcSVEtmELZtUqCq0tb6SGMe3JRkQ",
       authDomain: "global-chat-bd90a.firebaseapp.com",
@@ -37,7 +43,6 @@
       measurementId: "G-NL8G2ETCCB"
     };
 
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
@@ -45,9 +50,36 @@
     const usernameInput = document.getElementById('username');
     const messageInput = document.getElementById('message');
     const sendBtn = document.getElementById('sendBtn');
+    const setUsernameBtn = document.getElementById('setUsernameBtn');
+    const statusDiv = document.getElementById('status');
 
-    // Get timestamp when page loads
+    let currentUsername = null;
     const startTime = Date.now();
+
+    // Load saved username from localStorage
+    const savedUsername = localStorage.getItem('chat_username');
+    if(savedUsername) {
+      usernameInput.value = savedUsername;
+    }
+
+    // Function to check if username is available
+    function checkUsernameAvailable(name) {
+      return db.ref('activeUsers/' + name).get().then(snapshot => {
+        return !snapshot.exists();
+      });
+    }
+
+    // Function to register username in activeUsers and setup onDisconnect removal
+    function registerUsername(name) {
+      const userRef = db.ref('activeUsers/' + name);
+      userRef.set(true);
+      userRef.onDisconnect().remove();
+    }
+
+    // Clear chat messages displayed
+    function clearMessages() {
+      messagesDiv.innerHTML = '';
+    }
 
     // Listen for new messages sent after page load
     db.ref('messages').on('child_added', snapshot => {
@@ -60,17 +92,58 @@
       }
     });
 
-    sendBtn.addEventListener('click', () => {
-      const username = usernameInput.value.trim();
-      const text = messageInput.value.trim();
-      if (!username) {
+    // Save username input changes to localStorage
+    usernameInput.addEventListener('input', () => {
+      localStorage.setItem('chat_username', usernameInput.value);
+    });
+
+    // Set username button click handler
+    setUsernameBtn.addEventListener('click', async () => {
+      const name = usernameInput.value.trim();
+      statusDiv.textContent = '';
+      if (!name) {
         alert('Please enter a username');
         return;
       }
+
+      if (currentUsername) {
+        // If user already set username, disallow change without page reload
+        alert('Username already set for this session. Refresh page to change.');
+        return;
+      }
+
+      try {
+        const available = await checkUsernameAvailable(name);
+        if (!available) {
+          statusDiv.textContent = 'Username "' + name + '" is already taken. Please choose another.';
+          return;
+        }
+        registerUsername(name);
+        currentUsername = name;
+        statusDiv.style.color = 'green';
+        statusDiv.textContent = 'Username "' + name + '" registered! You can now chat.';
+        usernameInput.disabled = true;
+        setUsernameBtn.disabled = true;
+        messageInput.disabled = false;
+        sendBtn.disabled = false;
+        messageInput.focus();
+      } catch (err) {
+        console.error('Error checking username:', err);
+        statusDiv.textContent = 'Error checking username availability. Try again.';
+      }
+    });
+
+    // Send message button handler
+    sendBtn.addEventListener('click', () => {
+      if (!currentUsername) {
+        alert('Please set a username first!');
+        return;
+      }
+      const text = messageInput.value.trim();
       if (!text) return;
 
       db.ref('messages').push({
-        username,
+        username: currentUsername,
         text,
         timestamp: Date.now()
       });
@@ -78,6 +151,7 @@
       messageInput.value = '';
     });
 
+    // Send message on Enter key
     messageInput.addEventListener('keyup', e => {
       if (e.key === 'Enter') sendBtn.click();
     });
