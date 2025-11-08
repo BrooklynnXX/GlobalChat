@@ -80,10 +80,12 @@
       });
     }
 
+    // Return a promise to wait for registration completion
     function registerUsername(name) {
       const userRef = db.ref('activeUsers/' + name);
-      userRef.set(true);
-      userRef.onDisconnect().remove();
+      return userRef.set(true).then(() => {
+        userRef.onDisconnect().remove();
+      });
     }
 
     function clearMessages() {
@@ -131,48 +133,49 @@
     let messagesListener = null;
 
     // Attach message listener according to selectedDMUser (global or DM)
-   function attachMessagesListener() {
-  // Remove previous listener if exists
-  if (messagesListener) {
-    if (selectedDMUser === null) {
-      db.ref('messages').off('child_added', messagesListener);
-    } else {
-      db.ref('privateMessages').off('child_added', messagesListener);
+    function attachMessagesListener() {
+      // Remove previous listener if exists
+      if (messagesListener) {
+        if (selectedDMUser === null) {
+          db.ref('messages').off('child_added', messagesListener);
+        } else {
+          db.ref('privateMessages').off('child_added', messagesListener);
+        }
+        messagesListener = null;
+      }
+
+      // Don't clear messages here anymore
+      // clearMessages();
+
+      if (selectedDMUser === null) {
+        // Global chat messages where to === null
+        messagesListener = snapshot => {
+          const msg = snapshot.val();
+          if (msg.timestamp > startTime && (!msg.to)) {
+            const div = document.createElement('div');
+            div.textContent = msg.username + ': ' + msg.text;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+          }
+        };
+        db.ref('messages').on('child_added', messagesListener);
+      } else {
+        // DM messages between currentUsername and selectedDMUser
+        messagesListener = snapshot => {
+          const msg = snapshot.val();
+          if (msg.timestamp > startTime &&
+              ((msg.from === currentUsername && msg.to === selectedDMUser) ||
+               (msg.from === selectedDMUser && msg.to === currentUsername))) {
+            const div = document.createElement('div');
+            div.textContent = (msg.from === currentUsername ? 'You' : msg.from) + ': ' + msg.text;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+          }
+        };
+        db.ref('privateMessages').on('child_added', messagesListener);
+      }
     }
-    messagesListener = null;
-  }
 
-  // Don't clear messages here anymore
-  // clearMessages();
-
-  if (selectedDMUser === null) {
-    // Global chat messages where to === null
-    messagesListener = snapshot => {
-      const msg = snapshot.val();
-      if (msg.timestamp > startTime && (!msg.to)) {
-        const div = document.createElement('div');
-        div.textContent = msg.username + ': ' + msg.text;
-        messagesDiv.appendChild(div);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-      }
-    };
-    db.ref('messages').on('child_added', messagesListener);
-  } else {
-    // DM messages between currentUsername and selectedDMUser
-    messagesListener = snapshot => {
-      const msg = snapshot.val();
-      if (msg.timestamp > startTime &&
-          ((msg.from === currentUsername && msg.to === selectedDMUser) ||
-           (msg.from === selectedDMUser && msg.to === currentUsername))) {
-        const div = document.createElement('div');
-        div.textContent = (msg.from === currentUsername ? 'You' : msg.from) + ': ' + msg.text;
-        messagesDiv.appendChild(div);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-      }
-    };
-    db.ref('privateMessages').on('child_added', messagesListener);
-  }
-}
     // Save username input changes to localStorage
     usernameInput.addEventListener('input', () => {
       localStorage.setItem('chat_username', usernameInput.value);
@@ -197,7 +200,9 @@
           statusDiv.textContent = 'Username "' + name + '" is already taken. Please choose another.';
           return;
         }
-        registerUsername(name);
+        // Wait for registration to complete before continuing
+        await registerUsername(name);
+
         currentUsername = name;
         statusDiv.style.color = 'green';
         statusDiv.textContent = 'Username "' + name + '" registered! You can now chat.';
@@ -206,6 +211,11 @@
         messageInput.disabled = false;
         sendBtn.disabled = false;
         messageInput.focus();
+
+        // Immediately re-fetch activeUsers to update the list now
+        db.ref('activeUsers').once('value').then(snapshot => {
+          updateUserList(snapshot.val());
+        });
 
         attachMessagesListener(); // start listening to messages
       } catch (err) {
