@@ -1,25 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>"Global" Chat</title>
+  <title>Glob and Priv Chat</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; }
-    #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
+    body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; }
+    #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; margin-bottom: 10px; }
     #messages div { margin-bottom: 8px; }
-    #username, #message { padding: 8px; width: 80%; }
+    #username, #message, #dmUserSelect { padding: 8px; width: 70%; }
     #sendBtn, #setUsernameBtn { padding: 8px; margin-left: 5px; }
     #status { margin-top: 10px; color: red; font-weight: bold; }
+    #userList { border: 1px solid #ccc; padding: 10px; max-height: 150px; overflow-y: scroll; margin-bottom: 10px; }
+    #userList div { cursor: pointer; padding: 4px; border-bottom: 1px solid #eee; }
+    #userList div.selected { background-color: #d0d0ff; }
   </style>
 </head>
 <body>
 
-  <h2>"Global" Chat</h2>
+  <h2>Glob and Priv Chat</h2>
 
   <label>Username: <input type="text" id="username" placeholder="Enter your name" />
     <button id="setUsernameBtn">Set Username</button>
   </label>
   <div id="status"></div>
   <br/>
+
+  <div><strong>Online Users:</strong></div>
+  <div id="userList">Loading...</div>
+
+  <div>
+    <label>Chatting with: <span id="dmWith">Global Chat</span></label>
+  </div>
 
   <div id="messages"></div>
 
@@ -31,7 +41,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
   <script>
-    // Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCPjxmzcSVEtmELZtUqCq0tb6SGMe3JRkQ",
       authDomain: "global-chat-bd90a.firebaseapp.com",
@@ -52,8 +61,11 @@
     const sendBtn = document.getElementById('sendBtn');
     const setUsernameBtn = document.getElementById('setUsernameBtn');
     const statusDiv = document.getElementById('status');
+    const userListDiv = document.getElementById('userList');
+    const dmWithSpan = document.getElementById('dmWith');
 
     let currentUsername = null;
+    let selectedDMUser = null;  // null means global chat
     const startTime = Date.now();
 
     // Load saved username from localStorage
@@ -62,42 +74,107 @@
       usernameInput.value = savedUsername;
     }
 
-    // Function to check if username is available
     function checkUsernameAvailable(name) {
       return db.ref('activeUsers/' + name).get().then(snapshot => {
         return !snapshot.exists();
       });
     }
 
-    // Function to register username in activeUsers and setup onDisconnect removal
     function registerUsername(name) {
       const userRef = db.ref('activeUsers/' + name);
       userRef.set(true);
       userRef.onDisconnect().remove();
     }
 
-    // Clear chat messages displayed
     function clearMessages() {
       messagesDiv.innerHTML = '';
     }
 
-    // Listen for new messages sent after page load
-    db.ref('messages').on('child_added', snapshot => {
-      const msg = snapshot.val();
-      if (msg.timestamp > startTime) {
-        const div = document.createElement('div');
-        div.textContent = msg.username + ': ' + msg.text;
-        messagesDiv.appendChild(div);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    // Update online users list, excluding yourself
+    function updateUserList(users) {
+      userListDiv.innerHTML = '';
+      if (!currentUsername) {
+        userListDiv.textContent = 'Set username to see online users.';
+        return;
       }
+      const otherUsers = Object.keys(users || {}).filter(u => u !== currentUsername);
+      if (otherUsers.length === 0) {
+        userListDiv.textContent = 'No other users online.';
+        return;
+      }
+      otherUsers.forEach(user => {
+        const div = document.createElement('div');
+        div.textContent = user;
+        if (user === selectedDMUser) div.classList.add('selected');
+        div.onclick = () => {
+          if (selectedDMUser === user) {
+            selectedDMUser = null; // deselect DM user → global chat
+            dmWithSpan.textContent = 'Global Chat';
+          } else {
+            selectedDMUser = user;
+            dmWithSpan.textContent = 'DM with ' + user;
+          }
+          clearMessages();
+          attachMessagesListener();
+          updateUserList(users);
+        };
+        userListDiv.appendChild(div);
+      });
+    }
+
+    // Listen to active users and update UI
+    db.ref('activeUsers').on('value', snapshot => {
+      updateUserList(snapshot.val());
     });
+
+    // Keep track of the message listener unsubscribe function
+    let messagesListener = null;
+
+    // Attach message listener according to selectedDMUser (global or DM)
+    function attachMessagesListener() {
+      // Remove previous listener if exists
+      if (messagesListener) {
+        db.ref('messages').off('child_added', messagesListener);
+        db.ref('privateMessages').off('child_added', messagesListener);
+        messagesListener = null;
+      }
+      clearMessages();
+
+      if (selectedDMUser === null) {
+        // Global chat messages where to === null
+        messagesListener = snapshot => {
+          const msg = snapshot.val();
+          if (msg.timestamp > startTime && (!msg.to)) { // to === null or undefined means global
+            const div = document.createElement('div');
+            div.textContent = msg.username + ': ' + msg.text;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+          }
+        };
+        db.ref('messages').on('child_added', messagesListener);
+      } else {
+        // DM messages between currentUsername and selectedDMUser
+        messagesListener = snapshot => {
+          const msg = snapshot.val();
+          if (msg.timestamp > startTime &&
+              ((msg.from === currentUsername && msg.to === selectedDMUser) ||
+               (msg.from === selectedDMUser && msg.to === currentUsername))) {
+            const div = document.createElement('div');
+            div.textContent = (msg.from === currentUsername ? 'You' : msg.from) + ': ' + msg.text;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+          }
+        };
+        db.ref('privateMessages').on('child_added', messagesListener);
+      }
+    }
 
     // Save username input changes to localStorage
     usernameInput.addEventListener('input', () => {
       localStorage.setItem('chat_username', usernameInput.value);
     });
 
-    // Set username button click handler
+    // Set username button
     setUsernameBtn.addEventListener('click', async () => {
       const name = usernameInput.value.trim();
       statusDiv.textContent = '';
@@ -105,16 +182,14 @@
         alert('Please enter a username');
         return;
       }
-
       if (currentUsername) {
-        // If user already set username, disallow change without page reload
         alert('Username already set for this session. Refresh page to change.');
         return;
       }
-
       try {
         const available = await checkUsernameAvailable(name);
         if (!available) {
+          statusDiv.style.color = 'red';
           statusDiv.textContent = 'Username "' + name + '" is already taken. Please choose another.';
           return;
         }
@@ -127,13 +202,15 @@
         messageInput.disabled = false;
         sendBtn.disabled = false;
         messageInput.focus();
+
+        attachMessagesListener(); // start listening to messages
       } catch (err) {
         console.error('Error checking username:', err);
         statusDiv.textContent = 'Error checking username availability. Try again.';
       }
     });
 
-    // Send message button handler
+    // Send message button
     sendBtn.addEventListener('click', () => {
       if (!currentUsername) {
         alert('Please set a username first!');
@@ -142,11 +219,22 @@
       const text = messageInput.value.trim();
       if (!text) return;
 
-      db.ref('messages').push({
-        username: currentUsername,
-        text,
-        timestamp: Date.now()
-      });
+      if (selectedDMUser === null) {
+        // Global chat: store in /messages with no 'to'
+        db.ref('messages').push({
+          username: currentUsername,
+          text,
+          timestamp: Date.now()
+        });
+      } else {
+        // DM chat: store in /privateMessages with from/to
+        db.ref('privateMessages').push({
+          from: currentUsername,
+          to: selectedDMUser,
+          text,
+          timestamp: Date.now()
+        });
+      }
 
       messageInput.value = '';
     });
@@ -155,6 +243,7 @@
     messageInput.addEventListener('keyup', e => {
       if (e.key === 'Enter') sendBtn.click();
     });
+
   </script>
 </body>
 </html>
