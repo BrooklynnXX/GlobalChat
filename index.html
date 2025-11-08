@@ -13,6 +13,7 @@
     #userList div.selected { background-color: #d0d0ff; }
     #status { margin: 10px 0; font-weight: bold; }
     #authForms > div { margin-bottom: 20px; }
+    #pfpUploadDiv { margin-top: 15px; }
   </style>
 </head>
 <body>
@@ -36,6 +37,13 @@
     </div>
 
     <button id="logoutBtn" style="display:none;">Log Out</button>
+
+    <!-- NEW: Profile Pic Update UI for logged in users -->
+    <div id="pfpUploadDiv" style="display:none;">
+      <h3>Update Profile Picture</h3>
+      <input type="file" id="pfpFile" accept="image/*" />
+      <button id="uploadPfpBtn">Upload</button>
+    </div>
   </div>
 
   <div id="status"></div>
@@ -87,6 +95,10 @@
     const loginBtn = document.getElementById('loginBtn');
 
     const logoutBtn = document.getElementById('logoutBtn');
+
+    const pfpUploadDiv = document.getElementById('pfpUploadDiv');
+    const pfpFile = document.getElementById('pfpFile');
+    const uploadPfpBtn = document.getElementById('uploadPfpBtn');
 
     const statusDiv = document.getElementById('status');
     const userListDiv = document.getElementById('userList');
@@ -311,6 +323,38 @@
       if (e.key === 'Enter') sendBtn.click();
     });
 
+    // ===== Profile pic upload for existing users =====
+    uploadPfpBtn.onclick = async () => {
+      if (!currentUser) {
+        alert('Please log in first!');
+        return;
+      }
+      const file = pfpFile.files[0];
+      if (!file) {
+        alert('Please select an image file!');
+        return;
+      }
+
+      statusDiv.textContent = 'Uploading profile picture...';
+
+      try {
+        const url = await uploadProfilePic(file, currentUser.uid);
+        await db.ref('users/' + currentUser.uid).update({ profilePic: url });
+
+        statusDiv.textContent = 'Profile picture updated!';
+
+        // Refresh user list and messages to show new PFP immediately
+        db.ref('activeUsers').once('value').then(snapshot => {
+          updateUserList(snapshot.val());
+        });
+        clearMessages();
+        attachMessagesListener();
+
+      } catch (e) {
+        statusDiv.textContent = 'Upload failed: ' + e.message;
+      }
+    };
+
     // ===== Auth state listener =====
     auth.onAuthStateChanged(async user => {
       currentUser = user;
@@ -321,6 +365,8 @@
         logoutBtn.style.display = 'inline-block';
         messageInput.disabled = false;
         sendBtn.disabled = false;
+
+        pfpUploadDiv.style.display = 'block'; // Show profile pic upload on login
 
         registerUserPresence(user.uid);
 
@@ -333,6 +379,9 @@
         logoutBtn.style.display = 'none';
         messageInput.disabled = true;
         sendBtn.disabled = true;
+
+        pfpUploadDiv.style.display = 'none'; // Hide profile pic upload on logout
+
         clearMessages();
       }
     });
