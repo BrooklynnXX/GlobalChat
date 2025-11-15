@@ -1,82 +1,4 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Gnarchat</title>
-  <link rel="stylesheet" href="styles.css"/>
-  <link rel="icon" href="GCICON.png">
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; }
-    #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; margin-bottom: 10px; }
-    #messages div { margin-bottom: 8px; display: flex; align-items: center; }
-    #messages img { width: 30px; height: 30px; border-radius: 50%; margin-right: 8px; }
-    input, button { padding: 8px; margin: 5px 0; width: 100%; max-width: 400px; }
-    #userList div { cursor: pointer; padding: 4px; border-bottom: 1px solid #eee; display: flex; align-items: center; }
-    #userList img { width: 25px; height: 25px; border-radius: 50%; margin-right: 8px; }
-    #userList div.selected { background-color: #d0d0ff; }
-    #status { margin: 10px 0; font-weight: bold; }
-    #authForms > div { margin-bottom: 20px; }
-    #pfpUploadDiv { margin-top: 15px; }
-    #displayNameUpdateDiv { margin-top: 15px; }
-  </style>
-</head>
-<body>
-
-  <img src="GNARCHAT_LOGO.png" id="logoTop" style="width:400px; height:240px;">
-
-  <div id="authForms">
-    <div id="signupDiv">
-      <h3>Sign Up</h3>
-      <input type="email" id="signupEmail" placeholder="Email" />
-      <input type="password" id="signupPassword" placeholder="Password" />
-      <input type="file" id="signupPfp" accept="image/*" />
-      <button id="signupBtn">Sign Up</button>
-    </div>
-
-    <div id="loginDiv">
-      <h3>Log In</h3>
-      <input type="email" id="loginEmail" placeholder="Email" />
-      <input type="password" id="loginPassword" placeholder="Password" />
-      <button id="loginBtn">Log In</button>
-    </div>
-
-    <button id="logoutBtn" style="display:none;">Log Out</button>
-
-    <!-- Profile Pic Update UI for logged in users -->
-    <div id="pfpUploadDiv" style="display:none;">
-      <h3>Update Profile Picture</h3>
-      <input type="file" id="pfpFile" accept="image/*" />
-      <button id="uploadPfpBtn">Upload</button>
-    </div>
-
-    <!-- Display Name Update UI -->
-    <div id="displayNameUpdateDiv" style="display:none;">
-      <h3>Update Display Name</h3>
-      <input type="text" id="displayNameInput" placeholder="Enter new display name" />
-      <button id="updateDisplayNameBtn">Update Name</button>
-    </div>
-  </div>
-
-  <div id="status"></div>
-
-  <div><strong>Online Users:</strong></div>
-  <div id="userList">Please log in to see online users.</div>
-
-  <div>
-    <label>Chatting with: <span id="dmWith">Global Chat</span></label>
-  </div>
-
-  <div id="messages"></div>
-
-  <input type="text" id="message" placeholder="Type your message" disabled />
-  <button id="sendBtn" disabled>Send</button>
-
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-
- <script>
+<script>
   const firebaseConfig = {
     apiKey: "AIzaSyCPjxmzcSVEtmELZtUqCq0tb6SGMe3JRkQ",
     authDomain: "global-chat-bd90a.firebaseapp.com",
@@ -137,6 +59,13 @@
     loginPassword.value = '';
   }
 
+  // Email domain check
+  function isAllowedEmail(email) {
+    if (!email) return false;
+    email = email.toLowerCase();
+    return email.endsWith('@lyceumgenk.be') || email === 'freddoxy03@gmail.com';
+  }
+
   // Upload profile pic to Firebase Storage and return URL
   async function uploadProfilePic(file, uid) {
     const ref = storage.ref().child('profile_pics/' + uid);
@@ -150,7 +79,14 @@
     currentUser = user;
 
     if (user) {
-      // Hide entire signup and login forms, show logout and chat UI
+      // Immediately check email domain; if not allowed, sign out
+      if (!isAllowedEmail(user.email)) {
+        alert('Access denied: your email is not authorized to use this chat.');
+        auth.signOut();
+        return;
+      }
+
+      // Hide signup/login, show logout and chat UI
       signupDiv.style.display = 'none';
       loginDiv.style.display = 'none';
       logoutBtn.style.display = 'inline-block';
@@ -206,12 +142,17 @@
 
   // ===== Signup =====
   signupBtn.onclick = async () => {
-    const email = signupEmail.value.trim();
+    const email = signupEmail.value.trim().toLowerCase();
     const pass = signupPassword.value.trim();
     const file = signupPfp.files[0];
 
     if (!email || !pass) {
       alert('Enter email and password to sign up');
+      return;
+    }
+
+    if (!isAllowedEmail(email)) {
+      alert('Sign up only allowed with @lyceumgenk.be emails or freddoxy03@gmail.com');
       return;
     }
 
@@ -250,11 +191,16 @@
 
   // ===== Login =====
   loginBtn.onclick = async () => {
-    const email = loginEmail.value.trim();
+    const email = loginEmail.value.trim().toLowerCase();
     const pass = loginPassword.value.trim();
 
     if (!email || !pass) {
       alert('Enter email and password to log in');
+      return;
+    }
+
+    if (!isAllowedEmail(email)) {
+      alert('Login only allowed with @lyceumgenk.be emails or freddoxy03@gmail.com');
       return;
     }
 
@@ -462,5 +408,3 @@
     }
   };
 </script>
-</body>
-</html>
