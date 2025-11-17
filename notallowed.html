@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Access Denied</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 150px auto;
+      text-align: center;
+      background: #f8f8f8;
+      color: #333;
+    }
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 0.5em;
+    }
+    p {
+      font-size: 1.2em;
+      margin-bottom: 2em;
+    }
+    button {
+      background-color: #d9534f;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1em;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #c9302c;
+    }
+  </style>
+</head>
+<body>
+  <h1>Access Denied</h1>
+  <p>You're not allowed on this page.</p>
+  <button onclick="closeTab()">Close this tab</button>
+
+  <script>
+    function closeTab() {
+      window.open('', '_self'); // some browsers require this line
+      window.close();
+      // If window.close() fails (likely), show a message
+      setTimeout(() => alert("Unable to close this tab automatically. Please close it manually."), 500);
+    }
+  </script>
+</body>
+</html>
