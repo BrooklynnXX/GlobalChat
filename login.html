@@ -105,8 +105,11 @@
         statusDiv.textContent = 'Please enter both email and password.';
         return;
       }
-      if (!isAllowedEmail(email)) {
+     if (!isAllowedEmail(email)) {
         statusDiv.textContent = 'Email not allowed.';
+        setTimeout(() => {
+        window.location.href = "https://brooklynnxx.github.io/GlobalChat/notallowed.html";
+        }, 1000); // 1000 milliseconds = 1 second
         return;
       }
 
