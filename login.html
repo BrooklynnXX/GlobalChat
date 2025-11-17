@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gnarchat Login</title>
+  <link rel="icon" href="GCICON.png" />
+  <style>
+    body {
+      background-color: #6a0dad; /* purple */
+      font-family: Arial, sans-serif;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    #logoTop {
+      width: 400px;
+      height: 240px;
+      margin-bottom: 30px;
+    }
+    #loginBox {
+      background: rgba(255 255 255 / 0.1);
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.3);
+      width: 320px;
+      text-align: center;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 12px 0;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #9b59b6;
+      border: none;
+      border-radius: 6px;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #7e3ea0;
+    }
+    #status {
+      margin-top: 15px;
+      min-height: 24px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <img src="GNARCHAT_LOGO.png" id="logoTop" alt="Gnarchat Logo">
+
+  <div id="loginBox">
+    <h2>Log In to Gnarchat</h2>
+    <input type="email" id="email" placeholder="Email" autocomplete="username" />
+    <input type="password" id="password" placeholder="Password" autocomplete="current-password" />
+    <button id="loginBtn">Log In</button>
+    <div id="status"></div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCPjxmzcSVEtmELZtUqCq0tb6SGMe3JRkQ",
+      authDomain: "global-chat-bd90a.firebaseapp.com",
+      databaseURL: "https://global-chat-bd90a-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "global-chat-bd90a",
+      storageBucket: "global-chat-bd90a.appspot.com",
+      messagingSenderId: "1090315136333",
+      appId: "1:1090315136333:web:13bea5c3c97cd067b6db04",
+      measurementId: "G-NL8G2ETCCB"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    function isAllowedEmail(email) {
+      if (!email) return false;
+      email = email.toLowerCase();
+      return email.endsWith('@lyceumgenk.be') || email === 'freddoxy03@gmail.com' || email === 'andert.goossens@gmail.com';
+    }
+
+    const loginBtn = document.getElementById('loginBtn');
+    const statusDiv = document.getElementById('status');
+
+    loginBtn.onclick = async () => {
+      const email = document.getElementById('email').value.trim().toLowerCase();
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        statusDiv.textContent = 'Please enter both email and password.';
+        return;
+      }
+      if (!isAllowedEmail(email)) {
+        statusDiv.textContent = 'Email not allowed.';
+        return;
+      }
+
+      statusDiv.textContent = 'Logging in...';
+
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        // On success, redirect to main chat page
+        window.location.href = 'index.html';
+      } catch (error) {
+        statusDiv.textContent = 'Login failed: ' + error.message;
+      }
+    };
+
+    // Redirect logged-in users automatically
+    auth.onAuthStateChanged(user => {
+      if (user && isAllowedEmail(user.email)) {
+        window.location.href = 'index.html';
+      }
+    });
+  </script>
+
+</body>
+</html>
