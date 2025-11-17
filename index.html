@@ -76,7 +76,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
- <script>
+<script>
   const firebaseConfig = {
     apiKey: "AIzaSyCPjxmzcSVEtmELZtUqCq0tb6SGMe3JRkQ",
     authDomain: "global-chat-bd90a.firebaseapp.com",
@@ -152,69 +152,76 @@
     return await ref.getDownloadURL();
   }
 
-  // ===== Auth State Changed Handler =====
- auth.onAuthStateChanged(async user => {
-  currentUser = user;
-
-  if (user) {
-    // Redirect if email not allowed
-    if (!isAllowedEmail(user.email)) {
-      window.location.href = '/GlobalChat/notallowed.html';
-      return;
+  // Immediately check logged in user on page load (before onAuthStateChanged)
+  if (auth.currentUser) {
+    if (!isAllowedEmail(auth.currentUser.email)) {
+      window.location.href = 'https://brooklynnxx.github.io/GlobalChat/notallowed.html';
     }
-
-    // Show chat UI and init as before
-    signupDiv.style.display = 'none';
-    loginDiv.style.display = 'none';
-    logoutBtn.style.display = 'inline-block';
-    messageInput.disabled = false;
-    sendBtn.disabled = false;
-    pfpUploadDiv.style.display = 'block';
-    displayNameUpdateDiv.style.display = 'none';
-
-    statusDiv.textContent = 'Checking user info...';
-
-    const userSnapshot = await db.ref('users/' + user.uid).get();
-    const userInfo = userSnapshot.val();
-
-    if (!userInfo || !userInfo.displayName) {
-      let displayName = null;
-      while (!displayName) {
-        displayName = prompt('Welcome! Please enter your display name:');
-        if (displayName) displayName = displayName.trim();
-        if (!displayName) alert('Display name cannot be empty!');
-      }
-      const profilePicUrl = userInfo?.profilePic || null;
-      await db.ref('users/' + user.uid).set({
-        email: user.email,
-        displayName: displayName,
-        profilePic: profilePicUrl
-      });
-      statusDiv.textContent = 'Welcome, ' + displayName + '!';
-      displayNameUpdateDiv.style.display = 'block';
-      displayNameInput.value = displayName;
-    } else {
-      statusDiv.textContent = 'Logged in as: ' + userInfo.displayName;
-      displayNameUpdateDiv.style.display = 'block';
-      displayNameInput.value = userInfo.displayName;
-    }
-
-    registerUserPresence(user.uid);
-    attachMessagesListener();
-
-  } else {
-    // Not logged in UI
-    statusDiv.textContent = 'Not logged in.';
-    signupDiv.style.display = 'block';
-    loginDiv.style.display = 'block';
-    logoutBtn.style.display = 'none';
-    messageInput.disabled = true;
-    sendBtn.disabled = true;
-    pfpUploadDiv.style.display = 'none';
-    displayNameUpdateDiv.style.display = 'none';
-    clearMessages();
   }
-});
+
+  // ===== Auth State Changed Handler =====
+  auth.onAuthStateChanged(async user => {
+    currentUser = user;
+
+    if (user) {
+      // Redirect immediately if email not allowed
+      if (!isAllowedEmail(user.email)) {
+        window.location.href = 'https://brooklynnxx.github.io/GlobalChat/notallowed.html';
+        return;
+      }
+
+      // Show chat UI and initialize
+      signupDiv.style.display = 'none';
+      loginDiv.style.display = 'none';
+      logoutBtn.style.display = 'inline-block';
+      messageInput.disabled = false;
+      sendBtn.disabled = false;
+      pfpUploadDiv.style.display = 'block';
+      displayNameUpdateDiv.style.display = 'none';
+
+      statusDiv.textContent = 'Checking user info...';
+
+      const userSnapshot = await db.ref('users/' + user.uid).get();
+      const userInfo = userSnapshot.val();
+
+      if (!userInfo || !userInfo.displayName) {
+        let displayName = null;
+        while (!displayName) {
+          displayName = prompt('Welcome! Please enter your display name:');
+          if (displayName) displayName = displayName.trim();
+          if (!displayName) alert('Display name cannot be empty!');
+        }
+        const profilePicUrl = userInfo?.profilePic || null;
+        await db.ref('users/' + user.uid).set({
+          email: user.email,
+          displayName: displayName,
+          profilePic: profilePicUrl
+        });
+        statusDiv.textContent = 'Welcome, ' + displayName + '!';
+        displayNameUpdateDiv.style.display = 'block';
+        displayNameInput.value = displayName;
+      } else {
+        statusDiv.textContent = 'Logged in as: ' + userInfo.displayName;
+        displayNameUpdateDiv.style.display = 'block';
+        displayNameInput.value = userInfo.displayName;
+      }
+
+      registerUserPresence(user.uid);
+      attachMessagesListener();
+
+    } else {
+      // Not logged in UI
+      statusDiv.textContent = 'Not logged in.';
+      signupDiv.style.display = 'block';
+      loginDiv.style.display = 'block';
+      logoutBtn.style.display = 'none';
+      messageInput.disabled = true;
+      sendBtn.disabled = true;
+      pfpUploadDiv.style.display = 'none';
+      displayNameUpdateDiv.style.display = 'none';
+      clearMessages();
+    }
+  });
 
   // ===== Signup =====
   signupBtn.onclick = async () => {
@@ -228,7 +235,7 @@
     }
 
     if (!isAllowedEmail(email)) {
-      window.location.href = '/notallowed.html';
+      window.location.href = 'https://brooklynnxx.github.io/GlobalChat/notallowed.html';
       return;
     }
 
@@ -276,7 +283,7 @@
     }
 
     if (!isAllowedEmail(email)) {
-      window.location.href = '/notallowed.html';
+      window.location.href = 'https://brooklynnxx.github.io/GlobalChat/notallowed.html';
       return;
     }
 
@@ -484,5 +491,6 @@
     }
   };
 </script>
+
 </body>
 </html>
