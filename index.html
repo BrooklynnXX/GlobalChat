@@ -153,70 +153,68 @@
   }
 
   // ===== Auth State Changed Handler =====
-  auth.onAuthStateChanged(async user => {
-    currentUser = user;
+ auth.onAuthStateChanged(async user => {
+  currentUser = user;
 
-    if (user) {
-      // Redirect if email not allowed
-      if (!isAllowedEmail(user.email)) {
-        window.location.href = '/notallowed.html';
-        return;
-      }
-
-      // Hide signup/login, show logout and chat UI
-      signupDiv.style.display = 'none';
-      loginDiv.style.display = 'none';
-      logoutBtn.style.display = 'inline-block';
-      messageInput.disabled = false;
-      sendBtn.disabled = false;
-      pfpUploadDiv.style.display = 'block';
-      displayNameUpdateDiv.style.display = 'none'; // will show if no displayName
-
-      statusDiv.textContent = 'Checking user info...';
-
-      // Check if user has displayName in DB
-      const userSnapshot = await db.ref('users/' + user.uid).get();
-      const userInfo = userSnapshot.val();
-
-      if (!userInfo || !userInfo.displayName) {
-        // Ask user for display name (block until they enter it)
-        let displayName = null;
-        while (!displayName) {
-          displayName = prompt('Welcome! Please enter your display name:');
-          if (displayName) displayName = displayName.trim();
-          if (!displayName) alert('Display name cannot be empty!');
-        }
-        // Save displayName and email, and profilePic (if any)
-        const profilePicUrl = userInfo?.profilePic || null;
-        await db.ref('users/' + user.uid).set({
-          email: user.email,
-          displayName: displayName,
-          profilePic: profilePicUrl
-        });
-        statusDiv.textContent = 'Welcome, ' + displayName + '!';
-        displayNameUpdateDiv.style.display = 'block'; // show update UI now
-        displayNameInput.value = displayName;
-      } else {
-        statusDiv.textContent = 'Logged in as: ' + userInfo.displayName;
-        displayNameUpdateDiv.style.display = 'block';
-        displayNameInput.value = userInfo.displayName;
-      }
-
-      registerUserPresence(user.uid);
-      attachMessagesListener();
-
-    } else {
-      statusDiv.textContent = 'Not logged in.';
-      signupDiv.style.display = 'block';
-      loginDiv.style.display = 'block';
-      logoutBtn.style.display = 'none';
-      messageInput.disabled = true;
-      sendBtn.disabled = true;
-      pfpUploadDiv.style.display = 'none';
-      displayNameUpdateDiv.style.display = 'none';
-      clearMessages();
+  if (user) {
+    // Redirect if email not allowed
+    if (!isAllowedEmail(user.email)) {
+      window.location.href = '/GlobalChat/notallowed.html';
+      return;
     }
-  });
+
+    // Show chat UI and init as before
+    signupDiv.style.display = 'none';
+    loginDiv.style.display = 'none';
+    logoutBtn.style.display = 'inline-block';
+    messageInput.disabled = false;
+    sendBtn.disabled = false;
+    pfpUploadDiv.style.display = 'block';
+    displayNameUpdateDiv.style.display = 'none';
+
+    statusDiv.textContent = 'Checking user info...';
+
+    const userSnapshot = await db.ref('users/' + user.uid).get();
+    const userInfo = userSnapshot.val();
+
+    if (!userInfo || !userInfo.displayName) {
+      let displayName = null;
+      while (!displayName) {
+        displayName = prompt('Welcome! Please enter your display name:');
+        if (displayName) displayName = displayName.trim();
+        if (!displayName) alert('Display name cannot be empty!');
+      }
+      const profilePicUrl = userInfo?.profilePic || null;
+      await db.ref('users/' + user.uid).set({
+        email: user.email,
+        displayName: displayName,
+        profilePic: profilePicUrl
+      });
+      statusDiv.textContent = 'Welcome, ' + displayName + '!';
+      displayNameUpdateDiv.style.display = 'block';
+      displayNameInput.value = displayName;
+    } else {
+      statusDiv.textContent = 'Logged in as: ' + userInfo.displayName;
+      displayNameUpdateDiv.style.display = 'block';
+      displayNameInput.value = userInfo.displayName;
+    }
+
+    registerUserPresence(user.uid);
+    attachMessagesListener();
+
+  } else {
+    // Not logged in UI
+    statusDiv.textContent = 'Not logged in.';
+    signupDiv.style.display = 'block';
+    loginDiv.style.display = 'block';
+    logoutBtn.style.display = 'none';
+    messageInput.disabled = true;
+    sendBtn.disabled = true;
+    pfpUploadDiv.style.display = 'none';
+    displayNameUpdateDiv.style.display = 'none';
+    clearMessages();
+  }
+});
 
   // ===== Signup =====
   signupBtn.onclick = async () => {
